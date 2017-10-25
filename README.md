@@ -1,29 +1,33 @@
 # coroutine
 
+** Author** Bernhard Kuner
+
 * Non blocking implementation of a state machine or sequence as coroutine,
 
-* Special feature: nested coroutines to be used as a function calls.
+* Special feature: function calls by nested coroutines.
 
 ## What is it useful for:
 
-The intention was to perform a state machine device polled via modbus tcp. The device is polled in 
-a special task and so it is useful to initiate actions, means sequences, to the device in the 
-main control program and continue it in the poll task to be shure you have imediate access to the 
-answer of the device.
+The idea came from a device that has to be accessed via modbus-tcp and polling. In order to 
+do this we implemented a state machine.
+
+The device is polled in a special task. We want to initiate actions in the main control program
+and continue with the poll task to ensure answers of the device are handled immediately.
 
 ## Implementation
 
-* **cass StateSet**: The base class for the sequence / state machine. Derived classes have to implement 
- the run() function, means the coroutine
+* **cass StateSet**: The base class for the sequence / state machine. Derived classes have to 
+implement `runFunc()`, which is the coroutine.
 
-* **class StateStack**: Manager for the nested StateSet classes
+* **class StateStack**: Manager for the nested StateSet classes.
 
-* **class StateReturnValue**: Return value for all cases of the run() function to pass data to the 
- StateStack
+* **struct StateReturnValue**: Return value of `runFunc()` to pass data to the StateStack.
 
-## How to use it shown in an example StateSet:
+*
 
-The Example class gets 2 arguments, that have to be persistent between the calls of the run() function.
+## How to use it is shown in this example StateSet
+
+The Example class gets 2 arguments that have to be persistent between the calls of runFunc().
 
 ```
 class myStateSet : StateSet
@@ -41,10 +45,10 @@ myStateSet(a1,a2,dbg=0)
 }
 ```
 
-The run function is non waiting, it has to perform all transition checks and actions. In case of a transition
-it has to set the new state  (variable isState) and than return to the caller immediatly.
+The run function must never block. It has to perform all transition checks and actions. In case of a transition
+it has to set the new state in `isState` and return immediatly.
 
-The run() function may call nested StateMachine (see case 2:)
+runFunc() may call a nested StateMachine, see `case 2`.
 
 ```
 runFunc()
@@ -64,13 +68,13 @@ runFunc()
              }
      case 3:
              ret = cleanUpThis();
-             return StateReturnValue(1,ret,NULL);  // Successfully done, return ret to caller
+             return StateReturnValue(1,ret,NULL);  // Done, return ret to caller
 };
 ```
 
-Run the state machine by create an StateSet object and add it to the stack. The StateStack.run() function
+Run the state machine by creating a StateSet object and add it to the stack. The `StateStack.run()` function
 has to be called periodically in a loop or task to perform the actions. The stateStack.run function will
-allways call the stack.back function if the stack is not empty().
+allways call the `stack.back` function if the stack is not empty.
 
 ```
 StateStack myStack;
