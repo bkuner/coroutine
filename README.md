@@ -1,6 +1,6 @@
 # coroutine
 
-** Author** Bernhard Kuner
+Author: Bernhard Kuner
 
 * Non blocking implementation of a state machine or sequence as coroutine,
 
@@ -23,7 +23,7 @@ implement `runFunc()`, which is the coroutine.
 
 * **struct StateReturnValue**: Return value of `runFunc()` to pass data to the StateStack.
 
-*
+* **struct StateError**: Exception. Throw this to return and clear the stack. 
 
 ## How to use it is shown in this example StateSet
 
