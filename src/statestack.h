@@ -31,17 +31,22 @@ class StateSet {
 public:
     int isState;
     const char *stateId;    // object identifies itself, just for debug purposes
-    int returnValue;        // return value of a nested StateSet, set via StateStack.run()
+    int result;        // return value of a nested StateSet, set via StateStack.run()
     int dbg;
     StateSet(int debug=0);
     virtual ~StateSet(){ }
-
-    // StateStack.run() will get a StateReturnValue.retVal. By setReturn() it will be passed to
-    // the caller StateSet and to the StateStack to be checked if the complete stateStack is done.
-    void setReturn(int ret);
-
     // Derived class implements the state set by means of a coroutine.
-    virtual StateReturnValue runFunc(int debug) = 0;
+    virtual StateReturnValue runFunc() = 0;
+
+    // return from runFunc with these functions to create the struct StateReturnValue
+    StateReturnValue call(int resumeState,StateSet *stCall);
+    StateReturnValue suspend(int resumeState);
+    StateReturnValue done(int result);
+    
+    // StateStack.run() will get a StateReturnValue.result. By setReturn() it will be passed to
+    // the caller StateSet and to the StateStack to be checked if the complete stateStack is done.
+    void setResult(int result) { this->result = result;}
+
 };
 
 
@@ -63,9 +68,9 @@ struct StateReturnValue {
     int done;        // return from derived run() function:
                     //      0 = not finished, but check *next
                     //      1 = called function done, delete this stateSet
-    int retVal;     // Set this value to StateStack.retVal when finish stateSet (done=1)
+    int result;     // Set this value to StateStack.result when finish stateSet (done=1)
     StateSet *next; // if *next push this on top of stack
-    StateReturnValue(int done,int retVal,StateSet *n);
+    StateReturnValue(int done,int result,StateSet *n);
 };
 
 /* Hold and manage the stack of StateSets
@@ -77,12 +82,15 @@ public:
     StateStack(int dbg);
     int run(int dbg);       // run the top of stack runFunc of the StateSet class
     void pop(void);         // remove last item from stack and delete() it!
-    int  getReturn(void);   // get the return value of finished StateSet, used for the initial caller if the stateStack gets empty 
     void call(StateSet *s); // Set a new StateSet. Nested StateSets are put on stack if set in StateReturnValue.next
-    bool empty(void);       // Check if any stateSet active
-    StateSet *getTop(void);
+     // Check if any stateSet active
+    bool empty(void)       { return stStack.empty();}
+    // get the result value of finished StateSet, used for the initial caller if the stateStack gets empty 
+    int  getResult(void)   { return result;}
+    StateSet *getTop(void) { return stStack.back();}
+
 private:
-    int retVal;
+    int result;
     int dbg;
     std::list<StateSet *> stStack;
 };

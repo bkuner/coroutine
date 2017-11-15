@@ -21,22 +21,18 @@
 #include "statestack.h"
 
 /* How to use:
-
     - start a statset by call 'callFunc(myStateStack)', myStateStack will be init
       with isState=0
-
     - always start StateStack with 0 as init state! Init your private variables here
-
     - finish a statset - and remove from stack, by returnFunc()
-
     - when throw an other than StateError, catched ouside the StateStack call
       clear() to remove all from the stack. To restart call callFunc to set
       stack to inital StateStack.
 */
-StateReturnValue::StateReturnValue(int ret,int retVal,StateSet *n)
+StateReturnValue::StateReturnValue(int ret,int result,StateSet *n)
 {
     this->done = ret;
-    this->retVal = retVal;
+    this->result = result;
     this->next = n;
 }
 
@@ -46,32 +42,28 @@ StateSet::StateSet(int dbg)
     this->isState = 0;
 }
 
-void StateSet::setReturn(int ret)
+
+StateReturnValue StateSet::call(int state,StateSet *stCall)
 {
-    returnValue = ret;
-    return;
+    this->isState = state;
+    return StateReturnValue(0,0,stCall);
+}
+
+StateReturnValue StateSet::suspend(int state)
+{
+    this->isState = state;
+    return StateReturnValue(0,0,NULL);
+}
+
+StateReturnValue StateSet::done(int result)
+{
+    return StateReturnValue(1,result,NULL);
 }
 
 StateStack::StateStack(int debug=0)
 {
-    retVal  = 0;
+    result  = 0;
     dbg     = (debug>0)?debug:0;
-}
-
-/* get return value from last finished stateFunc */
-int StateStack::getReturn()
-{
-    return retVal;
-}
-
-StateSet *StateStack::getTop(void)
-{
-    return stStack.back();
-}
-
-bool StateStack::empty(void)
-{
-    return stStack.empty();
 }
 
 /* set StateStack to be called next to top of the stack*/
@@ -98,24 +90,24 @@ int StateStack::run(int dbg)
         int isStateOld = s->isState;
         try{
             if(dbg>0) printf("run '%s,%d' (%p)\n",s->stateId,s->isState,s);
-            stRet = s->runFunc(dbg);
+            stRet = s->runFunc();
         }
         catch(StateError e) {
             fprintf(stderr,"State Exception in: %s:%d : '%s', clear Stack\n",s->stateId,s->isState,e.what().c_str());
             while(!stStack.empty() )
                pop();
-            retVal = 1;      // the Exception sets StateStack::retVal to indicate an error
+            result = 1;      // the Exception sets StateStack::result to indicate an error
             return 1;
         }
         if(s->isState != isStateOld) {
             if(dbg>0) printf("%s: %d -> %d\n",s->stateId,isStateOld,s->isState);
         }
         if(stRet.done) {      // Nested called StateFunc done, remove from stack.
-            retVal = stRet.retVal;
+            result = stRet.result;
             pop();
             if(!stStack.empty()) {
                 s = stStack.back();
-                s->setReturn(retVal);
+                s->setResult(result);
             }
         }
         else if(stRet.next != NULL){
@@ -137,4 +129,3 @@ std::string StateError::what()
 {
     return errStr;
 }
-

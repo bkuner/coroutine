@@ -22,6 +22,11 @@ implement `runFunc()`, which is the coroutine.
 * **class StateStack**: Manager for the nested StateSet classes.
 
 * **struct StateReturnValue**: Return value of `runFunc()` to pass data to the StateStack.
+  This struct is crated by call one of these functions: 
+  
+- return suspend(resumeState);
+- return call(resumeState,*newStateSet);
+- return done(result);
 
 * **struct StateError**: Exception. Throw this to return and clear the stack. 
 
@@ -57,18 +62,16 @@ runFunc()
 
      switch(isState)
      case 1: doSomething();
-             isState=2;
-             return StateReturnValue(0,0,NULL);      // set next state and return
+             return suspend(2);      // set next state and return
      case 2: if( somethingIsDone() ) {
-                 isState = 3;
-                 return StateReturnValue(0,0,(StateSet *) new yourStates()); // call nested StateSet 'yourStates'
+                 return call(3,(StateSet *) new yourStates()); // call nested StateSet 'yourStates'
              }
              else {
                  throw StateError("ERROR something is not done: Finish all");
              }
      case 3:
              ret = cleanUpThis();
-             return StateReturnValue(1,ret,NULL);  // Done, return ret to caller
+             return done(ret);  // Done, return ret to caller
 };
 ```
 

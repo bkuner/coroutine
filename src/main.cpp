@@ -90,7 +90,7 @@ class Rectangle: StateSet
 public:
     Rectangle(int *data, int dbg);
     ~Rectangle(){}
-    StateReturnValue runFunc(int dbg);
+    StateReturnValue runFunc();
 };
 
 Rectangle::Rectangle(int *data, int dbg)
@@ -103,30 +103,28 @@ Rectangle::Rectangle(int *data, int dbg)
     this->data = data;
 }
 
-StateReturnValue Rectangle::runFunc(int dbg){
+StateReturnValue Rectangle::runFunc(){
     switch(isState) {
     case INIT:  *data += size;
-                isState = HIGH;
-                return StateReturnValue(0,0,NULL);
+                return suspend(HIGH);
     case HIGH:  if(++periodeCount >= periode) {
                     *data -= size;
                     periodeCount = 0;
-                    isState = LOW;
+                    return suspend(LOW);
                 }
-                return StateReturnValue(0,0,NULL);
+                return suspend(HIGH);
     case LOW:   if( ++periodeCount >= periode) {
                     periodeCount = 0;
                     if(--nrOfRectangles) {
                         *data += size;
-                        isState = HIGH;
-                        return StateReturnValue(0,0,NULL);  // next Rectangle
+                        return suspend(HIGH);  // next Rectangle
                     }
                     else {
                         *data -= 1;
-                        return StateReturnValue(1,0,NULL);  // Done
+                        return done(0);  // Done
                     }
                 }
-                return StateReturnValue(0,0,NULL);
+                return suspend(LOW);
     }
 }
 class Triangle: StateSet
@@ -139,7 +137,7 @@ class Triangle: StateSet
 public:
     Triangle(int nrOfTriangles, int size, int *data, int dbg);
     ~Triangle(){};
-    StateReturnValue runFunc(int dbg);
+    StateReturnValue runFunc();
 };
 
 Triangle::Triangle(int nrOfTriangles, int size, int *data, int dbg)
@@ -150,24 +148,23 @@ Triangle::Triangle(int nrOfTriangles, int size, int *data, int dbg)
     this->data = data;
 }
 
-StateReturnValue Triangle::runFunc(int dbg){
+StateReturnValue Triangle::runFunc(){
     switch(isState) {
     case INC:   *data += 1;
                 if(*data >= size) {
-                    isState = DEC;
-                    return StateReturnValue(0,0,(StateSet*) new Rectangle(data,dbg-1));
+                    return call(DEC,(StateSet*) new Rectangle(data,dbg-1));
                 }
-                return StateReturnValue(0,0,NULL);
+                return suspend(INC);;
     case DEC:   *data -= 1;
                 if(*data <= 0) {
                     isState = INC;
                     if(--nrOfTriangles) {
-                        return StateReturnValue(0,0,NULL);  // next Triangle
+                        return suspend(INC);  // next Triangle
                     }
                     else
-                        return StateReturnValue(1,0,NULL);  // Done
+                        return done(0);  // Done
                 }
-                return StateReturnValue(0,0,NULL);
+                return suspend(DEC);
     }
 }
 
