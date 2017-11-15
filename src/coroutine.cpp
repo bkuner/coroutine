@@ -22,10 +22,12 @@
 
 Coroutine::Coroutine(const char* name, int debug) {
     this->debug = debug;
-    this->name = name;
+    this->name   = name;
     this->parent = 0;
-    this->top = 0;
-    this->state = 0;
+    this->top    = 0;
+    this->bottom = 0;
+    this->state  = 0;
+    this->dbg    = debug;
     if (debug > 0)
         std::cerr << "coroutine " << this->name << " created" << std::endl;
 }
@@ -40,7 +42,7 @@ void Coroutine::pop_and_delete() {
     }
 }
 
-bool Coroutine::step() {
+bool Coroutine::step() {    // this it the method of the bottom Coroutine object
     // initially the top is NULL
     if (!this->top) {
         assert(!this->parent);
@@ -49,16 +51,19 @@ bool Coroutine::step() {
     try {
         // resume top of the stack, passing its state
         if (debug > 1)
-            std::cerr << "resuming coroutine " << this->top->name << std::endl;
+            std::cerr << "Resume coroutine: " << this->top->name << ":"<<this->top->state<< std::endl;
         if (this->top->run(this->top->state)) {
             // top is done
+            int res = this->top->result;
             if (this->top->parent) {
                 // we are not at the bottom
-                pop_and_delete();
+                pop_and_delete();   // this it the method of the bottom Coroutine object
+                this->top->result = res;    // pass result to the new top
                 // and thus not yet done
                 return false;
             } else {
-                // we are at the bottom so we're done now
+                // we are at the bottom so we're done now, delete may be done by the caller.
+                this->result = this->top->result; // pass result to bottom
                 return true;
             }
         } else {
@@ -67,35 +72,54 @@ bool Coroutine::step() {
     } catch(Abort e) {
         std::cerr << "coroutine " << this->top->name << " aborted in state "
             << this->top->state << ": " << e.why() << std::endl;
-        while (this->top) {
-            pop_and_delete();
-        }
+        abort();
         // we are done
         return true;
     }
 }
 
+// The run() method has to return one of these functions to signal the bottom->step() function
+// the result of this step
 bool Coroutine::suspend(int state) {
     if (debug > 0)
-        std::cerr << "coroutine " << this->name << " suspended" << std::endl;
+        std::cerr << "coroutine " << this->name << " suspended:" << state << std::endl;
     this->state = state;
     // we are not yet done
     return false;
 }
 
-bool Coroutine::call(int state, Coroutine *other) {
+// Start a new Coroutine, make it a bottom object. Set top only for the bottom
+// object it is called in the periodicaly task: bottom->step() calles bottom->top->run()
+void Coroutine::start(void)
+{
+    this->top    = this;
+    this->bottom = this;
+}
+
+// call() extends the list with a new Coroutine object:
+//
+// stack:  bottom/first/sec/../parent.call( new other)
+//                             { other->parent = this
+//                               other->bottom = parent->bottom // pass bottom along the list
+//                               bottom->top   = other  // set the new top to be called next
+//                             }
+// run cyclic: bottom->top->run()
+bool Coroutine::call(int state, Coroutine *other) { // call is allways the parent function
     if (debug > 0)
-        std::cerr << "coroutine " << this->name
-            << " calling " << other->name << std::endl;
+        std::cerr << "coroutine " << this->name << " calling " << other->name << std::endl;
     this->state = state;
-    this->top = other;
+    this->bottom->top = other;
     other->parent = this;
-    other->top = other;
+    other->bottom = this->bottom;
     // we are not yet done
     return false;
 }
 
-bool Coroutine::done() {
+bool Coroutine::done(int result) {
+    if(this->parent != NULL)
+        this->parent->result = result; // give result back to the parent
+    else
+        this->result = result; // bottom done, set bottom->result
     if (debug > 0)
         std::cerr << "coroutine " << this->name << " returned" << std::endl;
     // there is nothing more to do
