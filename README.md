@@ -1,6 +1,6 @@
 # coroutine
 
-Author: Bernhard Kuner
+Author: Benjamin Franksen, Bernhard Kuner
 
 * Non blocking implementation of a state machine or sequence as coroutine,
 
@@ -21,11 +21,13 @@ implement `run()`, which is the coroutine. The Coroutine class implements also t
 
 * **struct Abort**: Exception. Throw this to return and clear the stack. 
 
-How to use it is shown in this example StateSet
+## How to use it is shown in this example
 
 The Example class gets 2 arguments that have to be persistent between the calls of runFunc().
 
-class myStateSet : Coroutine
+
+c```
+lass myStateSet : Coroutine
 {
      int arg1,arg2;
      myStateSet(a1,a2,dbg);
@@ -38,9 +40,11 @@ myStateSet(a1,a2,dbg=0)
      arg1 = a1;      // Store the arguments
      arg2 = a2;
 }
+```
 
 The run function must never block. It has to perform all transition checks and actions. In case of a transition it has to set the new state in isState and return immediatly.
 
+```
 run() may call a nested StateMachine, see case 2.
 
 run(int state)
@@ -60,9 +64,11 @@ run(int state)
              ret = cleanUpThis();
              return done(ret);  // Done, return ret to caller
 };
+```
 
 Run the state machine by creating a StateSet object and add it to the stack. The StateStack.run() function has to be called periodically in a loop or task to perform the actions. The stateStack.run function will allways call the stack.back function if the stack is not empty.
 
+```
     Coroutine *st = (Coroutine *)new  myStateSet(nrOfWaves,size,&data,dbg);
     st->start();    // set this as bottom object before run it!
     
@@ -74,4 +80,5 @@ Run the state machine by creating a StateSet object and add it to the stack. The
     }
     while(1);
     printf("END, result: %d\n",tri->getResult());
+```
 
