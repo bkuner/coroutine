@@ -26,7 +26,7 @@ implement `run()`, which is the coroutine. The Coroutine class implements also t
 The Example class gets 2 arguments that have to be persistent between the calls of runFunc().
 
 
-c```
+```
 lass myStateSet : Coroutine
 {
      int arg1,arg2;
