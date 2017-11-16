@@ -71,6 +71,7 @@ public:
     int getDebug() { return this->dbg;}
     void abort(void) { while (this->top) { pop_and_delete();} }
 
+    friend void startNext(Coroutine **bottom,Coroutine *next);
 protected:
 
     int dbg;    // debug flag
@@ -115,6 +116,10 @@ private:
     // remember where we are (instruction pointer so to speak)
     int state;
 };
+
+// startNext push this in front of the list, make it the new top to be
+// processed after the current top coroutine is done.
+void startNext(Coroutine **bottom,Coroutine *next);
 
 // Exception class; cought by Coroutine::step() so it can clean up the stack
 class Abort {

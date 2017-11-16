@@ -78,6 +78,9 @@
 #include <unistd.h>
 #include "coroutine.h"
 
+// Set high < 8 to demonstrate Abort
+int high=8;
+
 class Rectangle: Coroutine
 {
     enum states{INIT,HIGH,LOW};
@@ -106,6 +109,8 @@ Rectangle::Rectangle(int *data, int dbg)
 bool Rectangle::run(int state){
     switch(state) {
     case INIT:  *data += size;
+                if(*data >= high)
+                    throw Abort("High limit: exceeded!");
                 return suspend(HIGH);
     case HIGH:  if(++periodeCount >= periode) {
                     *data -= size;
@@ -169,7 +174,6 @@ bool Triangle::run(int state){
     }
 }
 
-
 int main(int argc, char **arg)
 {
     int nrOfWaves = 2;
@@ -179,14 +183,30 @@ int main(int argc, char **arg)
 
     Coroutine *tri = (Coroutine *)new  Triangle(nrOfWaves,size,&data,dbg);
     tri->start();
+    
+    // after tri is done, start next
+    Coroutine *next = (Coroutine*) new Rectangle(&data,dbg);
+    startNext(&tri,next);
     do {
+        if(dbg) 
+            printf("%s:%d\t",tri->getTopName(),tri->getTopState());
         if( tri->step() )
             break;
-        printf("%d\n",data);
-        sleep(1);
+        if(dbg) {
+            printf("%d\n",data);
+            sleep(1);
+        }
+        else
+            printf("%d ",data);
     }
     while(1);
-    printf("END\n");
+
+    int result = tri->getResult();
+    if(result)
+        printf("Evil END: %d Abort!\n",result);
+    else
+        printf("END: %d OK!\n",result);
+    delete(tri);
     return 0;
     
 }

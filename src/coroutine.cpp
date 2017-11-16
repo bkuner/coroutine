@@ -70,6 +70,7 @@ bool Coroutine::step() {    // this it the method of the bottom Coroutine object
             return false;
         }
     } catch(Abort e) {
+        this->result = 1;
         std::cerr << "coroutine " << this->top->name << " aborted in state "
             << this->top->state << ": " << e.why() << std::endl;
         abort();
@@ -94,6 +95,26 @@ void Coroutine::start(void)
 {
     this->top    = this;
     this->bottom = this;
+}
+
+
+// set bottom Coroutine pointer to next Coroutine, setup next as bottom in the list
+// As it sets the bottom pointer, this function can not be part of the Coroutine object.
+void startNext(Coroutine **bottom,Coroutine *next)
+{
+    next->top = (*bottom)->top;
+    (*bottom)->parent = next;
+    (*bottom)->top = next;
+    *bottom = next;
+    Coroutine *walkStack = next->top;
+    while(1) {
+        if(walkStack->parent) {
+            walkStack->bottom = *bottom;
+            walkStack = walkStack->parent;
+        }
+        else
+            break;
+    }
 }
 
 // call() extends the list with a new Coroutine object:
